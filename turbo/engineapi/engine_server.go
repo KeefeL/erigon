@@ -894,9 +894,13 @@ func (e *EngineServer) HandleNewPayload(
 		}
 	}
 
+	startTime := time.Now()
 	if err := e.chainRW.InsertBlockAndWait(ctx, block); err != nil {
 		return nil, err
 	}
+	elapsedTime := time.Since(startTime).Seconds()
+	mgasps := float64(block.GasUsed()) / elapsedTime / 1e6
+	e.logger.Info(fmt.Sprintf("[%s] Inserted a new block, tx: %d, gas: %.3fMgas, mgas_throughput=%.3fMgas/second", logPrefix, len(block.Transactions()), float64(block.GasUsed())/1e6, mgasps))
 
 	if math.AbsoluteDifference(*currentHeadNumber, headerNumber) >= 32 {
 		return &engine_types.PayloadStatus{Status: engine_types.AcceptedStatus}, nil
