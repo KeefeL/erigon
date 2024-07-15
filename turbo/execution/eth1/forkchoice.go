@@ -306,11 +306,13 @@ func (e *EthereumExecutionModule) updateForkChoice(ctx context.Context, blockHas
 		}
 	}
 	// Run the forkchoice
+	startTime := time.Now()
 	if _, err := e.executionPipeline.Run(e.db, wrap.TxContainer{Tx: tx}, false); err != nil {
 		err = fmt.Errorf("updateForkChoice: %w", err)
 		sendForkchoiceErrorWithoutWaiting(outcomeCh, err)
 		return
 	}
+	elapsedTime := time.Since(startTime).Seconds()
 	// if head hash was set then success otherwise no
 	headHash := rawdb.ReadHeadBlockHash(tx)
 	headNumber := rawdb.ReadHeaderNumber(tx, headHash)
@@ -356,6 +358,9 @@ func (e *EthereumExecutionModule) updateForkChoice(ctx context.Context, blockHas
 		}
 		if log {
 			e.logger.Info("head updated", "hash", headHash, "number", *headNumber)
+			head := rawdb.ReadHeader(tx, headHash, *headNumber)
+			mgasps := float64(head.GasUsed) / elapsedTime / 1e6
+			e.logger.Info(fmt.Sprintf("Inserted a new block, number: %d, gas: %.3fMgas, mgas_throughput=%.3fMgas/second", head.Number.Uint64(), float64(head.GasUsed)/1e6, mgasps))
 		}
 
 		if err := e.db.Update(ctx, func(tx kv.RwTx) error { return e.executionPipeline.RunPrune(e.db, tx, false) }); err != nil {
