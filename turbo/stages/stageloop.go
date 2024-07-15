@@ -155,9 +155,10 @@ func StageLoopIteration(ctx context.Context, db kv.RwDB, txc wrap.TxContainer, s
 	}
 	logCtx := sync.PrintTimings()
 	var tableSizes []interface{}
+	tableSizes = stagedsync.PrintTables(db, txc.Tx)
 	var commitTime time.Duration
 	if canRunCycleInOneTransaction && !externalTx {
-		tableSizes = stagedsync.PrintTables(db, txc.Tx) // Need to do this before commit to access tx
+		//tableSizes = stagedsync.PrintTables(db, txc.Tx) // Need to do this before commit to access tx
 		commitStart := time.Now()
 		errTx := txc.Tx.Commit()
 		txc.Tx = nil
