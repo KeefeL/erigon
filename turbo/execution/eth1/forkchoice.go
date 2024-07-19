@@ -358,9 +358,14 @@ func (e *EthereumExecutionModule) updateForkChoice(ctx context.Context, blockHas
 		}
 		if log {
 			e.logger.Info("head updated", "hash", headHash, "number", *headNumber)
-			head := rawdb.ReadHeader(tx, headHash, *headNumber)
-			mgasps := float64(head.GasUsed) / elapsedTime / 1e6
-			e.logger.Info(fmt.Sprintf("Inserted a new block, number: %d, gas: %.3fMgas, mgas_throughput=%.3fMgas/second", head.Number.Uint64(), float64(head.GasUsed)/1e6, mgasps))
+			roTx, err := e.db.BeginRo(ctx)
+			if err == nil {
+				defer roTx.Rollback()
+
+				head := rawdb.ReadHeader(roTx, headHash, *headNumber)
+				mgasps := float64(head.GasUsed) / elapsedTime / 1e6
+				e.logger.Info(fmt.Sprintf("Inserted a new block, number: %d, gas: %.3fMgas, mgas_throughput=%.3fMgas/second", head.Number.Uint64(), float64(head.GasUsed)/1e6, mgasps))
+			}
 		}
 
 		if err := e.db.Update(ctx, func(tx kv.RwTx) error { return e.executionPipeline.RunPrune(e.db, tx, false) }); err != nil {
